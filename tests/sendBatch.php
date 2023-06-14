@@ -64,7 +64,7 @@ try {
     //realiza chamada
     $signedRps = $rps->getSignedRps();
     $lote->addRps($signedRps);
-    $result = $lote->sendLote();
+    $result = $lote->sendLote('LoteRps');
 
     dd($result);
 } catch (Exception $e) {

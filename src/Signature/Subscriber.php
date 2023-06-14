@@ -37,7 +37,6 @@ class Subscriber
     //assina uma TAG em uma string XML
     public function assina($xml, $tag)
     {
-
         //faz a assinatura
         $signed = $this->pcks12->signXML($xml, $tag);
 

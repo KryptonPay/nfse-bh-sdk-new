@@ -45,12 +45,19 @@ class Rps
             $this->rps = $this->xml->createElement("Rps");
             $this->servico = $this->xml->createElement("Servico");
             $this->prestador = $this->xml->createElement("Prestador");
-            $this->tomador = $this->xml->createElement("Tomador");
+
+            $taker = 'Tomador';
+            $infRps = 'InfRps';
+            if ($this->settings->issuer->codMun == 3543402) {
+                $taker = 'TomadorServico';
+                $infRps = 'InfDeclaracaoPrestacaoServico';
+            }
+            $this->tomador = $this->xml->createElement($taker);
 
             //seta os ids para assinatura posterior
             $this->rps->setAttribute('xmlns', 'http://www.abrasf.org.br/nfse.xsd');
             $this->rps->setAttribute('Id', $idRps);
-            $this->infRps = $this->xml->createElement('InfRps');
+            $this->infRps = $this->xml->createElement($infRps);
             $this->infRps->setAttribute('Id', 'rps:' . $idRps);
 
             //inicia os validators
@@ -89,11 +96,20 @@ class Rps
             $tagIdentfRps->appendChild($tagNumRps);
             $tagIdentfRps->appendChild($tagSerieRps);
             $tagIdentfRps->appendChild($tagTipoRps);
-            $this->infRps->appendChild($tagIdentfRps);
+
+            if ($this->settings->issuer->codMun == 3543402) {
+                $tagRps = $this->xml->createElement('Rps');
+                $tagRps->appendChild($tagIdentfRps);
+                $tagRps->appendChild($tagDtEmissao);
+                $tagRps->appendChild($tagNatOperacao);
+                $this->infRps->appendChild($tagRps);
+            } else {
+                $this->infRps->appendChild($tagIdentfRps);
+                $this->infRps->appendChild($tagDtEmissao);
+                $this->infRps->appendChild($tagNatOperacao);
+            }
 
             //apend dos dados restantes
-            $this->infRps->appendChild($tagDtEmissao);
-            $this->infRps->appendChild($tagNatOperacao);
             if ($lot->rps->regime) {
                 $this->infRps->appendChild($tagRegTributacao);
             }
@@ -165,8 +181,8 @@ class Rps
         try {
             $this->validateService($lot);
             //cria as tags
-            $tagItemLista = $this->xml->createElement("ItemListaServico", $lot->rps->service->itemList);
-            $tagCodTribut = $this->xml->createElement("CodigoTributacaoMunicipio", $lot->rps->service->municipalityTaxationCode);
+            $tagItemLista = $this->xml->createElement("ItemListaServico", trim($lot->rps->service->itemList));
+            $tagCodTribut = $this->xml->createElement("CodigoTributacaoMunicipio", trim($lot->rps->service->municipalityTaxationCode));
             $tagDiscriminacao = $this->xml->createElement("Discriminacao", $lot->rps->service->description);
             $tagCodMunicipio = $this->xml->createElement("CodigoMunicipio", $lot->rps->service->municipalCode);
             $tagValores = $this->xml->createElement("Valores");
@@ -252,11 +268,6 @@ class Rps
                 throw new \Exception("Não foi definido a informação de ISS retido.");
             }
 
-            //aliquota em valor percentual.Formato: 0.0000 Ex: 1% = 0.01 | 25,5% = 0.255 | 100% = 1.0000 ou 1
-            if (strlen($lot->rps->service->aliquot) > 5) {
-                throw new \Exception("O valor da aliquota é inválida.");
-            }
-
             //faz uma última validação nos valores da tag serviço
             $checkValues = [
                 'valor dos serviços ' => $lot->rps->service->serviceValue,
@@ -307,8 +318,8 @@ class Rps
 
             $tagIdentifTomador = $this->xml->createElement('IdentificacaoTomador');
             $tagCpfCnpj = $this->xml->createElement('CpfCnpj');
-            $tagCpf = $this->xml->createElement('Cpf', $lot->rps->taker->document);
-            $tagCnpj = $this->xml->createElement('Cnpj', $lot->rps->taker->document);
+            $tagCpf = $this->xml->createElement('Cpf', trim($lot->rps->taker->document));
+            $tagCnpj = $this->xml->createElement('Cnpj', trim($lot->rps->taker->document));
             $tagInscMunicipal = $this->xml->createElement('InscricaoMunicipal', $lot->rps->taker->municipalRegistration);
             $tagRzSocial = $this->xml->createElement('RazaoSocial', $lot->rps->taker->name);
 

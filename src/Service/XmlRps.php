@@ -28,7 +28,7 @@ class XmlRps
         $this->text = new Text;
 
         //cria o documento XML
-        $this->xml = XML::load('loteRps')
+        $this->xml = XML::load($settings->issuer->codMun == 3106200 ? 'loteRps' : 'nfseEnvio')
             ->set('NumeroLote', $this->text->with($numLote)->sanitize()->get())
             ->set('Cnpj', $this->num->with($this->settings->issuer->cnpj)->sanitize()->get())
             ->set('InscricaoMunicipal', $this->num->with($this->settings->issuer->imun)->sanitize()->get())

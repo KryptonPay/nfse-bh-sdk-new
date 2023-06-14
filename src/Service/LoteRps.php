@@ -3,7 +3,6 @@
 use Exception;
 use NFse\Helpers\Utils;
 use NFse\Models\Settings;
-use NFse\Service\XmlRps;
 use NFse\Signature\Subscriber;
 use NFse\Soap\EnvioLoteRps;
 use NFse\Soap\ErrorMsg;
@@ -24,7 +23,7 @@ class LoteRps
      */
     public function __construct(Settings $settings, string $numLote)
     {
-        $this->xSoap = new Soap($settings, 'GerarNfseRequest');
+        $this->xSoap = new Soap($settings, $settings->issuer->codMun == 3106200 ? 'GerarNfseRequest' : 'GerarNfse');
         $this->loteRps = new XmlRps($settings, $numLote);
 
         $this->subscriber = new Subscriber($settings);
@@ -49,13 +48,13 @@ class LoteRps
     /**
      * retorna o lote pronto para envio
      */
-    public function sendLote(): object
+    public function  sendLote($signTag): object
     {
         $xmlLote = Utils::xmlFilter($this->loteRps->getLoteRps());
 
         //tenta assinar o lote
         try {
-            $signedLote = $this->subscriber->assina($xmlLote, 'LoteRps');
+            $signedLote = $this->subscriber->assina($xmlLote, $signTag);
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
         }
