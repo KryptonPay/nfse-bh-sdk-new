@@ -22,13 +22,13 @@ class WebService
     public $urlHomolagation = [
         3106200 => 'https://bhisshomologa.pbh.gov.br/bhiss-ws/nfse?wsdl',
         3543402 => 'https://nfse.issnetonline.com.br/abrasf204/ribeiraopreto/nfse.asmx?wsdl',
-        3147105 => 'https://parademinas.quasar.srv.br/nfe/'
+        3147105 => 'https://parademinas.quasar.srv.br/nfe/snissdigitalsvc?wsdl'
     ];
 
     public $urlProduction = [
         3106200 => 'https://bhissdigital.pbh.gov.br/bhiss-ws/nfse?wsdl',
         3543402 => 'https://nfse.issnetonline.com.br/abrasf204/ribeiraopreto/nfse.asmx?wsdl',
-        3147105 => 'https://parademinas.quasar.srv.br/nfe/'
+        3147105 => 'https://parademinas.quasar.srv.br/nfe/snissdigitalsvc?wsdl'
     ];
 
     /**

@@ -41,6 +41,9 @@ class Soap extends SoapClient
                     'cache_wsdl' => $this->webservice->cacheWsdl,
                     'stream_context' => stream_context_create([
                         "ssl" => [
+                            'verify_peer' => false,
+                            'verify_host' => false,
+                            'allow_self_signed' => true,
                             'local_cert' => $this->settings->certificate->folder . $this->settings->certificate->mixedKey,
                             "verify_peer" => $this->webservice->sslVerifyPeer,
                             "verify_peer_name" => $this->webservice->sslVerifyPeerName,
@@ -93,16 +96,26 @@ class Soap extends SoapClient
         //monta a mensagem ao webservice
 /*        $data = '<?xml version="1.0" encoding="utf-8"?>';*/
 //        $data = '<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">';
-        $data = '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:nfse="http://nfse.abrasf.org.br">';
+        $data =  $this->settings->issuer->codMun == '3147105' ? '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:nfse="http://ws.supernova.com.br/">': '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:nfse="http://nfse.abrasf.org.br">';
         $data .= '<soapenv:Header/>';
         $data .= '<soapenv:Body>';
         $data .= "<nfse:{$this->method}>";
-        $data .= '<nfseCabecMsg>';
-        $data .= '<cabecalho versao="1.00" xmlns="http://www.abrasf.org.br/nfse.xsd"><versaoDados>2.04</versaoDados></cabecalho>';
-        $data .= '</nfseCabecMsg>';
-        $data .= '<nfseDadosMsg>';
-        $data .= $this->xml;
-        $data .= '</nfseDadosMsg>';
+
+        if($this->settings->issuer->codMun == '3147105')
+        {
+            $location = 'https://parademinas.quasar.srv.br/nfe/snissdigitalsvc?wsdl';
+            $data .= '<xml>';
+            $data .= $this->xml;
+            $data .= '</xml>';
+        } else
+        {
+            $data .= '<nfseCabecMsg>';
+            $data .= '<cabecalho versao="1.00" xmlns="http://www.abrasf.org.br/nfse.xsd"><versaoDados>2.04</versaoDados></cabecalho>';
+            $data .= '</nfseCabecMsg>';
+            $data .= '<nfseDadosMsg>';
+            $data .= $this->xml;
+            $data .= '</nfseDadosMsg>';
+        }
         $data .= "</nfse:{$this->method}>";
         $data .= '</soapenv:Body>';
         $data .= '</soapenv:Envelope>';
@@ -117,7 +130,7 @@ class Soap extends SoapClient
             dd('exception', $b);
             throw new \Exception("No momento o sistema da prefeitura está instável ou inoperante, tente novamente mais tarde.<br>E - {$b->getMessage()}");
         }
-dd('response', $response);
+
         return $response;
     }
 }
