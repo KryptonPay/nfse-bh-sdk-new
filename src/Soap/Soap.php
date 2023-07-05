@@ -26,7 +26,6 @@ class Soap extends SoapClient
             $this->webservice = new WebService($settings);
             $this->method = $method;
             $this->settings = $settings;
-
             //seta as opções de certificado digital e stream context
             if (is_null($options)) {
                 $options = [
@@ -41,9 +40,7 @@ class Soap extends SoapClient
                     'cache_wsdl' => $this->webservice->cacheWsdl,
                     'stream_context' => stream_context_create([
                         "ssl" => [
-                            'verify_peer' => false,
-                            'verify_host' => false,
-                            'allow_self_signed' => true,
+
                             'local_cert' => $this->settings->certificate->folder . $this->settings->certificate->mixedKey,
                             "verify_peer" => $this->webservice->sslVerifyPeer,
                             "verify_peer_name" => $this->webservice->sslVerifyPeerName,
@@ -51,9 +48,10 @@ class Soap extends SoapClient
                     ]),
                 ];
             }
-
             try {
+
                 parent::__construct($this->webservice->wsdl, $options);
+
             } catch (SoapFault $e) {
                 throw new Exception("No momento o sistema da prefeitura está instável ou inoperante, tente novamente mais tarde.\nE - {$e->getMessage()}");
             }
@@ -96,27 +94,31 @@ class Soap extends SoapClient
         //monta a mensagem ao webservice
 /*        $data = '<?xml version="1.0" encoding="utf-8"?>';*/
 //        $data = '<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">';
-        $data =  $this->settings->issuer->codMun == '3147105' ? '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:nfse="http://ws.supernova.com.br/">': '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:nfse="http://nfse.abrasf.org.br">';
+        $data = $this->settings->issuer->codMun == '3147105' ? '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.supernova.com.br/">': '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:nfse="http://nfse.abrasf.org.br">';
         $data .= '<soapenv:Header/>';
         $data .= '<soapenv:Body>';
-        $data .= "<nfse:{$this->method}>";
+
 
         if($this->settings->issuer->codMun == '3147105')
         {
+            $data .= "<ws:{$this->method}>";
             $location = 'https://parademinas.quasar.srv.br/nfe/snissdigitalsvc?wsdl';
             $data .= '<xml>';
             $data .= $this->xml;
             $data .= '</xml>';
+            $data .= "</ws:{$this->method}>";
         } else
         {
+            $data .= "<nfse:{$this->method}>";
             $data .= '<nfseCabecMsg>';
             $data .= '<cabecalho versao="1.00" xmlns="http://www.abrasf.org.br/nfse.xsd"><versaoDados>2.04</versaoDados></cabecalho>';
             $data .= '</nfseCabecMsg>';
             $data .= '<nfseDadosMsg>';
             $data .= $this->xml;
             $data .= '</nfseDadosMsg>';
+            $data .= "</nfse:{$this->method}>";
         }
-        $data .= "</nfse:{$this->method}>";
+
         $data .= '</soapenv:Body>';
         $data .= '</soapenv:Envelope>';
 
@@ -124,10 +126,8 @@ class Soap extends SoapClient
             dd($data);
             $response = parent::__doRequest($data, $location, $action, $version, $one_way);
         } catch (\SoapFault $a) {
-            dd('soap error', $a);
             throw new \Exception("Não foi possivel se conectar ao sistema da prefeitura, tente novamente mais tarde.<br>E - {$a->getMessage()}");
         } catch (\Exception $b) {
-            dd('exception', $b);
             throw new \Exception("No momento o sistema da prefeitura está instável ou inoperante, tente novamente mais tarde.<br>E - {$b->getMessage()}");
         }
 

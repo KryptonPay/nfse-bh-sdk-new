@@ -23,6 +23,7 @@ class LoteRps
      */
     public function __construct(Settings $settings, string $numLote)
     {
+
         $this->xSoap = new Soap($settings, $settings->issuer->codMun == 3106200 ? 'GerarNfseRequest' : 'GerarNfse');
         $this->loteRps = new XmlRps($settings, $numLote);
 
@@ -32,6 +33,7 @@ class LoteRps
         try {
             $this->subscriber->loadPFX();
         } catch (Exception $e) {
+
             throw $e;
         }
     }
@@ -52,20 +54,22 @@ class LoteRps
     {
         $xmlLote = Utils::xmlFilter($this->loteRps->getLoteRps());
 
-        //tenta assinar o lote
-        try {
-            $signedLote = $this->subscriber->assina($xmlLote, $signTag);
-        } catch (Exception $e) {
-            throw new Exception($e->getMessage());
+        if($settings->issuer->codMun != 3147105) {
+            //tenta assinar o lote
+            try {
+                $signedLote = $this->subscriber->assina($xmlLote, $signTag);
+            } catch (Exception $e) {
+                throw new Exception($e->getMessage());
+            }
+            $this->xmlLote = $signedLote;
         }
-
-        $this->xmlLote = $signedLote;
 
         //envia o request para a PBH
         try {
             $this->xSoap->setXML($signedLote);
             $wsResponse = $this->xSoap->__soapCall();
         } catch (Exception $e) {
+
             throw new Exception($e->getMessage());
         }
 
@@ -86,6 +90,22 @@ class LoteRps
                 'response' => (object) $wsLote->getDadosLote(),
             ];
         }
+    }
+    public function sendLoteQuasar( $fromFile = false): object
+    {
+
+        $xmlLote = Utils::xmlFilter($this->loteRps->getLoteRps());
+
+        $xml = $xmlLote;
+        if ($fromFile == true && is_file($xmlLote)) {
+            $xml = file_get_contents($xmlLote);
+        }
+
+        $order = ["\r\n", "\n", "\r", "\t"];
+        $xml = str_replace($order, '', $xml);
+
+       dd($xml);
+
     }
 
     public function getXMLLote()

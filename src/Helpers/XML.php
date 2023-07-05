@@ -11,6 +11,7 @@ class XML
      */
     public static function load($file, $fromString = false): xml
     {
+
         if ($fromString) {
             self::$content = $file;
         } else {

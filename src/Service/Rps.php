@@ -13,6 +13,9 @@ class Rps
     private $xml;
     private $rps;
     private $infRps;
+    private $tagOpSimple;
+    private $tagIncFiscal;
+    private $tagProducao;
     private $servico;
     private $prestador;
     private $tomador;
@@ -30,7 +33,7 @@ class Rps
      * @param NFse\Models\Settings;
      * @param string;
      */
-    public function __construct(Settings $settings, string $idRps)
+    public function __construct(Settings $settings, string $idRps, $lot = null)
     {
         try {
             $this->settings = $settings;
@@ -42,28 +45,43 @@ class Rps
             $this->xml->formatOutput = true;
 
             //cria as tags mãe
+            if ($this->settings->issuer->codMun === 3147105) {
+                $this->infRps = $this->xml->createElement("InfDeclaracaoPrestacaoServico");
+                $this->tagOpSimple = $this->xml->createElement('OptanteSimplesNacional',$lot->rps->simple);
+                $this->tagIncFiscal = $this->xml->createElement('IncentivoFiscal',$lot->rps->culturalPromoter);
+                $this->tagProducao = $this->xml->createElement('Producao',$lot->rps->service->producao);
+            }
             $this->rps = $this->xml->createElement("Rps");
             $this->servico = $this->xml->createElement("Servico");
             $this->prestador = $this->xml->createElement("Prestador");
 
             $taker = 'Tomador';
-            $infRps = 'InfRps';
+
+            if ($this->settings->issuer->codMun != 3147105) {
+
+                $infRps = 'InfRps';
+            }
             if ($this->settings->issuer->codMun == 3543402) {
                 $taker = 'TomadorServico';
-                $infRps = 'InfDeclaracaoPrestacaoServico';
             }
             $this->tomador = $this->xml->createElement($taker);
 
             //seta os ids para assinatura posterior
-            $this->rps->setAttribute('xmlns', 'http://www.abrasf.org.br/nfse.xsd');
-            $this->rps->setAttribute('Id', $idRps);
-            $this->infRps = $this->xml->createElement($infRps);
-            $this->infRps->setAttribute('Id', 'rps:' . $idRps);
+            if ($this->settings->issuer->codMun === 3147105) {
+                $this->infRps->setAttribute('Id', $idRps);
+                $this->rps->setAttribute('Id', $idRps);
+            } else {
+                $this->rps->setAttribute('xmlns', 'http://www.abrasf.org.br/nfse.xsd');
+                $this->rps->setAttribute('Id', $idRps);
+                $this->infRps = $this->xml->createElement($infRps);
+                $this->infRps->setAttribute('Id', 'rps:' . $idRps);
+            }
 
             //inicia os validators
             $this->num = new Num();
             $this->text = new Text();
-        } catch (Exception $e) {
+        } catch
+        (Exception $e) {
             throw $e;
         }
     }
@@ -76,7 +94,9 @@ class Rps
     public function setRpsIdentification(Lot $lot): void
     {
         try {
-            $this->validateRpsIdentification($lot);
+            if ($this->settings->issuer->codMun != 3147105) {
+                $this->validateRpsIdentification($lot);
+            }
 
             //cria os elementos DOM
             $tagIdentfRps = $this->xml->createElement('IdentificacaoRps');
@@ -84,6 +104,7 @@ class Rps
             $tagSerieRps = $this->xml->createElement('Serie', $lot->rps->serie);
             $tagTipoRps = $this->xml->createElement('Tipo', $lot->rps->type);
             $tagDtEmissao = $this->xml->createElement('DataEmissao', str_replace(' ', 'T', $lot->rps->date));
+
             $tagNatOperacao = $this->xml->createElement('NaturezaOperacao', $lot->rps->nature);
             if ($lot->rps->regime) {
                 $tagRegTributacao = $this->xml->createElement('RegimeEspecialTributacao', $lot->rps->regime);
@@ -93,9 +114,16 @@ class Rps
             $tagStatus = $this->xml->createElement('Status', $lot->rps->status);
 
             //append da identificação de RPS
-            $tagIdentfRps->appendChild($tagNumRps);
-            $tagIdentfRps->appendChild($tagSerieRps);
-            $tagIdentfRps->appendChild($tagTipoRps);
+            if ($this->settings->issuer->codMun != 3147105) {
+                $tagIdentfRps->appendChild($tagNumRps);
+                $tagIdentfRps->appendChild($tagSerieRps);
+                $tagIdentfRps->appendChild($tagTipoRps);
+            } else {
+                $tagIdentfRps->appendChild($tagNumRps);
+                $tagIdentfRps->appendChild($tagSerieRps);
+                $tagIdentfRps->appendChild($tagTipoRps);
+                $this->rps->appendChild($tagStatus);
+            }
 
             if ($this->settings->issuer->codMun == 3543402) {
                 $tagRps = $this->xml->createElement('Rps');
@@ -103,6 +131,10 @@ class Rps
                 $tagRps->appendChild($tagDtEmissao);
                 $tagRps->appendChild($tagNatOperacao);
                 $this->infRps->appendChild($tagRps);
+            } else if ($this->settings->issuer->codMun === 3147105) {
+                $this->rps->appendChild($tagIdentfRps);
+                $this->rps->appendChild($tagDtEmissao);
+                $this->rps->appendChild($tagStatus);
             } else {
                 $this->infRps->appendChild($tagIdentfRps);
                 $this->infRps->appendChild($tagDtEmissao);
@@ -113,9 +145,12 @@ class Rps
             if ($lot->rps->regime) {
                 $this->infRps->appendChild($tagRegTributacao);
             }
-            $this->infRps->appendChild($tagSimplesNac);
-            $this->infRps->appendChild($tagIncentivCult);
-            $this->infRps->appendChild($tagStatus);
+            if ($this->settings->issuer->codMun != 3147105) {
+                $this->infRps->appendChild($tagSimplesNac);
+                $this->infRps->appendChild($tagIncentivCult);
+                $this->infRps->appendChild($tagStatus);
+            }
+
         } catch (Exception $e) {
             throw $e;
         }
@@ -134,7 +169,6 @@ class Rps
             if (empty($lot->rps->number) || empty($lot->rps->serie) || empty($lot->rps->type)) {
                 throw new \Exception("O RPS não contém número, serie ou tipo.");
             }
-
             // datetime posteriormente será convertido para o padrão do lote
             if (empty($lot->rps->date) || !Utils::isDate($lot->rps->date, 'Y-m-d H:i:s', 'America/Sao_Paulo')) {
                 throw new \Exception("A data de emissão do RPS é inválida ou está em branco.");
@@ -181,7 +215,8 @@ class Rps
         try {
             $this->validateService($lot);
             //cria as tags
-            $tagItemLista = $this->xml->createElement("ItemListaServico", trim($lot->rps->service->itemList));
+            $itemLista = $this->settings->issuer->codMun == 3147105 ? str_replace('.', '', $lot->rps->service->itemList) : trim($lot->rps->service->itemList);
+            $tagItemLista = $this->xml->createElement("ItemListaServico", $itemLista);
             $tagCodTribut = $this->xml->createElement("CodigoTributacaoMunicipio", trim($lot->rps->service->municipalityTaxationCode));
             $tagDiscriminacao = $this->xml->createElement("Discriminacao", $lot->rps->service->description);
             $tagCodMunicipio = $this->xml->createElement("CodigoMunicipio", $lot->rps->service->municipalCode);
@@ -198,7 +233,13 @@ class Rps
             $tagOutrasRet = $this->xml->createElement('OutrasRetencoes', $lot->rps->service->otherDeductions);
             $tagAliquota = $this->xml->createElement('Aliquota', $lot->rps->service->aliquot);
             $tagDescontoInc = $this->xml->createElement('DescontoIncondicionado', $lot->rps->service->unconditionedDiscount);
-            $tagDescontoCond = $this->xml->createElement('DescontoCondicionado', $lot->rps->service->discountCondition);
+            if ($this->settings->issuer->codMun != 3147105) {
+                $tagDescontoCond = $this->xml->createElement('DescontoCondicionado', $lot->rps->service->discountCondition);
+            }
+            if ($this->settings->issuer->codMun == 3147105) {
+                $tagCompetencia = $this->xml->createElement('Competencia', str_replace(' ', 'T', $lot->rps->date));
+                $tagExigibilidadeISS = $this->xml->createElement('ExigibilidadeISS', 1);
+            }
 
             //faz o append
             $tagValores->appendChild($tagValServicos);
@@ -208,19 +249,34 @@ class Rps
             $tagValores->appendChild($tagValInss);
             $tagValores->appendChild($tagValIR);
             $tagValores->appendChild($tagValCSLL);
-            $tagValores->appendChild($tagISSRetido);
+            if ($this->settings->issuer->codMun != 3147105) {
+                $tagValores->appendChild($tagISSRetido);
+            }
             $tagValores->appendChild($tagValIss);
             $tagValores->appendChild($tagOutrasRet);
-            $tagValores->appendChild($tagAliquota);
+            if ($this->settings->issuer->codMun != 3147105) {
+                $tagValores->appendChild($tagAliquota);
+            }
             $tagValores->appendChild($tagDescontoInc);
-            $tagValores->appendChild($tagDescontoCond);
-
+            if ($this->settings->issuer->codMun != 3147105) {
+                $tagValores->appendChild($tagDescontoCond);
+            }
+            if ($this->settings->issuer->codMun === 3147105) {
+                $this->servico->appendChild($tagCompetencia);
+            }
             $this->servico->appendChild($tagValores);
+            if ($this->settings->issuer->codMun === 3147105) {
+                $this->servico->appendChild($tagISSRetido);
+            }
             $this->servico->appendChild($tagItemLista);
             $this->servico->appendChild($tagCodTribut);
             $this->servico->appendChild($tagDiscriminacao);
             $this->servico->appendChild($tagCodMunicipio);
+            if ($this->settings->issuer->codMun === 3147105) {
+                $this->servico->appendChild($tagExigibilidadeISS);
+            }
         } catch (Exception $e) {
+
             throw $e;
         }
     }
@@ -281,6 +337,7 @@ class Rps
                 'desconto incondicionado' => $lot->rps->service->unconditionedDiscount,
             ];
             foreach ($checkValues as $k => $valor) {
+
                 if (!Utils::isValor($valor)) {
                     throw new Exception("O campo {$k} não é composto de um valor monetário válido.");
                 }
@@ -293,14 +350,28 @@ class Rps
     /**
      * seta o prestador de serviços
      */
-    public function setProvider(): void
+    public function setProvider($lot = null): void
     {
         try {
+            if ($this->settings->issuer->codMun === 3147105) {
+                $tagCpfCnpj = $this->xml->createElement('CpfCnpj');
+            }
             $tagCnpj = $this->xml->createElement('Cnpj', $this->settings->issuer->cnpj);
             $tagIm = $this->xml->createElement('InscricaoMunicipal', $this->settings->issuer->imun);
-            $this->prestador->appendChild($tagCnpj);
+            $tagSenha = $this->xml->createElement('Senha', $lot->rps->service->senha);
+            $tagFraseSecreta = $this->xml->createElement('FraseSecreta', $lot->rps->service->fraseSecreta);
+            if ($this->settings->issuer->codMun === 3147105) {
+                $this->prestador->appendChild($tagCpfCnpj);
+                $tagCpfCnpj->appendChild($tagCnpj);
+            } else {
+                $this->prestador->appendChild($tagCnpj);
+            }
             $this->prestador->appendChild($tagIm);
             $this->infRps->appendChild($this->prestador);
+            if ($this->settings->issuer->codMun === 3147105) {
+                $this->prestador->appendChild($tagSenha);
+                $this->prestador->appendChild($tagFraseSecreta);
+            }
         } catch (Exception $e) {
             throw $e;
         }
@@ -331,14 +402,27 @@ class Rps
             $tagCodMunicipio = $this->xml->createElement('CodigoMunicipio', $lot->rps->taker->address->municipalityCode);
             $tagUf = $this->xml->createElement('Uf', $lot->rps->taker->address->state);
             $tagCep = $this->xml->createElement('Cep', $lot->rps->taker->address->zipCode);
+            $tagCodPais = $this->xml->createElement('CodigoPais', $lot->rps->taker->address->contryCode);
 
             $tagContato = $this->xml->createElement('Contato');
             $tagTelefone = $this->xml->createElement('Telefone', $lot->rps->taker->phone);
             $tagEmail = $this->xml->createElement('Email', $lot->rps->taker->email);
 
+
             //faz o append das tags
-            $tagCpfCnpj->appendChild(($lot->rps->taker->type == Self::CNPJ) ? $tagCnpj : $tagCpf);
-            $tagIdentifTomador->appendChild($tagCpfCnpj);
+            if ($this->settings->issuer->codMun === 3147105 && $lot->rps->taker->type == Self::CNPJ) {
+                $tagIdentifTomador->appendChild($tagCpfCnpj);
+                $tagCpf = $this->xml->createElement('Cpf', trim($lot->rps->taker->document));
+                $tagCpfCnpj->appendChild($tagCpf);
+            } else if ($this->settings->issuer->codMun === 3147105 && $lot->rps->taker->type == Self::CPF) {
+                $tagIdentifTomador->appendChild($tagCpfCnpj);
+                $tagCnpj = $this->xml->createElement('Cnpj', trim($lot->rps->taker->document));
+                $tagCpfCnpj->appendChild($tagCnpj);
+            } else {
+                $tagCpfCnpj->appendChild(($lot->rps->taker->type == Self::CNPJ) ? $tagCnpj : $tagCpf);
+
+                $tagIdentifTomador->appendChild($tagCpfCnpj);
+            }
 
             if (!empty($lot->rps->taker->municipalRegistration)) {
                 //não vazia e somente números
@@ -349,8 +433,9 @@ class Rps
             $this->tomador->appendChild($tagRzSocial);
             $tagEndereco->appendChild($tagRua);
             $tagEndereco->appendChild($tagNumero);
-
-            $tagContato->appendChild($tagTelefone);
+            if ($this->settings->issuer->codMun != 3147105) {
+                $tagContato->appendChild($tagTelefone);
+            }
             $tagContato->appendChild($tagEmail);
 
             if (!empty($lot->rps->taker->address->complement)) {
@@ -360,11 +445,15 @@ class Rps
             $tagEndereco->appendChild($tagBairro);
             $tagEndereco->appendChild($tagCodMunicipio);
             $tagEndereco->appendChild($tagUf);
-            $tagEndereco->appendChild($tagCep);
-
+            if ($this->settings->issuer->codMun === 3147105) {
+                $tagEndereco->appendChild($tagCodPais);
+            }
             $this->tomador->appendChild($tagEndereco);
             $this->tomador->appendChild($tagContato);
+
+
         } catch (Exception $e) {
+
             throw $e;
         }
     }
@@ -387,6 +476,7 @@ class Rps
         $endereco['cep'] = $this->num->with($lot->rps->taker->address->zipCode)->sanitize()->maxL(8)->get();
 
         //faz as validações nescessárias
+
         if (empty($lot->rps->taker->type) || !in_array($lot->rps->taker->type, [1, 2])) {
             throw new Exception("O tipo do tomador de serviços é inváldo.");
         }
@@ -416,14 +506,28 @@ class Rps
     public function getRps(string $mode = 'xml'): string
     {
         try {
-            $this->infRps->appendChild($this->servico);
-            $this->infRps->appendChild($this->prestador);
-            $this->infRps->appendChild($this->tomador);
-            $this->rps->appendChild($this->infRps);
-            $this->xml->appendChild($this->rps);
+
+            if ($this->settings->issuer->codMun == 3147105) {
+                $this->infRps->appendChild($this->rps);
+                $this->infRps->appendChild($this->servico);
+                $this->infRps->appendChild($this->prestador);
+                $this->infRps->appendChild($this->tomador);
+                $this->infRps->appendChild($this->tagOpSimple);
+                $this->infRps->appendChild($this->tagIncFiscal);
+                $this->infRps->appendChild($this->tagProducao);
+                $this->xml->appendChild($this->infRps);
+
+            } else {
+                $this->infRps->appendChild($this->servico);
+                $this->infRps->appendChild($this->prestador);
+                $this->infRps->appendChild($this->tomador);
+                $this->rps->appendChild($this->infRps);
+                $this->xml->appendChild($this->rps);
+            }
 
             return ($mode == 'xml') ? $this->xml->saveXML() : $this->xml->documentElement;
         } catch (Exception $e) {
+
             throw $e;
         }
     }
@@ -434,7 +538,10 @@ class Rps
         try {
             $xmlRps = Utils::xmlFilter($this->getRps());
             $this->subscriber->loadPFX();
-            $xmlSigned = $this->subscriber->assina($xmlRps, 'Rps');
+            $xmlSigned = $xmlRps;
+            if ($this->settings->issuer->codMun != 3147105) {
+                $xmlSigned = $this->subscriber->assina($xmlRps, 'Rps');
+            }
 
             return $xmlSigned;
         } catch (Exception $e) {
