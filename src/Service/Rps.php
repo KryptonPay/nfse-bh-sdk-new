@@ -13,6 +13,7 @@ class Rps
     private $xml;
     private $rps;
     private $infRps;
+    private $tagCompetencia;
     private $tagOpSimple;
     private $tagIncFiscal;
     private $tagProducao;
@@ -46,10 +47,12 @@ class Rps
 
             //cria as tags mãe
             if ($this->settings->issuer->codMun === 3147105) {
+                $this->rpsFather = $this->xml->createElement("Rps");
                 $this->infRps = $this->xml->createElement("InfDeclaracaoPrestacaoServico");
-                $this->tagOpSimple = $this->xml->createElement('OptanteSimplesNacional',$lot->rps->simple);
-                $this->tagIncFiscal = $this->xml->createElement('IncentivoFiscal',$lot->rps->culturalPromoter);
-                $this->tagProducao = $this->xml->createElement('Producao',$lot->rps->service->producao);
+                $this->tagCompetencia = $this->xml->createElement('Competencia', str_replace(' ', 'T', $lot->rps->date));
+                $this->tagOpSimple = $this->xml->createElement('OptanteSimplesNacional', $lot->rps->simple);
+                $this->tagIncFiscal = $this->xml->createElement('IncentivoFiscal', $lot->rps->culturalPromoter);
+                $this->tagProducao = $this->xml->createElement('Producao', $lot->rps->service->producao);
             }
             $this->rps = $this->xml->createElement("Rps");
             $this->servico = $this->xml->createElement("Servico");
@@ -215,9 +218,13 @@ class Rps
         try {
             $this->validateService($lot);
             //cria as tags
-            $itemLista = $this->settings->issuer->codMun == 3147105 ? str_replace('.', '', $lot->rps->service->itemList) : trim($lot->rps->service->itemList);
+
+            $itemLista = $this->settings->issuer->codMun == 3147105 ?
+                str_replace('.', '', $lot->rps->service->itemList) : trim($lot->rps->service->itemList);
             $tagItemLista = $this->xml->createElement("ItemListaServico", $itemLista);
-            $tagCodTribut = $this->xml->createElement("CodigoTributacaoMunicipio", trim($lot->rps->service->municipalityTaxationCode));
+            $tagCodCnae = $this->xml->createElement('CodigoCnae', $lot->rps->service->codCnae);
+            $tagCodTribut = $this->xml->createElement("CodigoTributacaoMunicipio",
+                trim($lot->rps->service->municipalityTaxationCode));
             $tagDiscriminacao = $this->xml->createElement("Discriminacao", $lot->rps->service->description);
             $tagCodMunicipio = $this->xml->createElement("CodigoMunicipio", $lot->rps->service->municipalCode);
             $tagValores = $this->xml->createElement("Valores");
@@ -231,13 +238,14 @@ class Rps
             $tagISSRetido = $this->xml->createElement('IssRetido', $lot->rps->service->issWithheld);
             $tagValIss = $this->xml->createElement('ValorIss', $lot->rps->service->issValue);
             $tagOutrasRet = $this->xml->createElement('OutrasRetencoes', $lot->rps->service->otherDeductions);
-            $tagAliquota = $this->xml->createElement('Aliquota', $lot->rps->service->aliquot);
-            $tagDescontoInc = $this->xml->createElement('DescontoIncondicionado', $lot->rps->service->unconditionedDiscount);
-            if ($this->settings->issuer->codMun != 3147105) {
-                $tagDescontoCond = $this->xml->createElement('DescontoCondicionado', $lot->rps->service->discountCondition);
-            }
+            $tagAliquota = $itemLista = $this->settings->issuer->codMun == 3147105 ?
+                $this->xml->createElement('Aliquota', str_replace('.', '', $lot->rps->service->aliquot)) :
+                $this->xml->createElement('Aliquota', $lot->rps->service->aliquot);
+            $tagDescontoInc = $this->xml->createElement('DescontoIncondicionado',
+                $lot->rps->service->unconditionedDiscount);
+            $tagDescontoCond = $this->xml->createElement('DescontoCondicionado',
+                $lot->rps->service->discountCondition);
             if ($this->settings->issuer->codMun == 3147105) {
-                $tagCompetencia = $this->xml->createElement('Competencia', str_replace(' ', 'T', $lot->rps->date));
                 $tagExigibilidadeISS = $this->xml->createElement('ExigibilidadeISS', 1);
             }
 
@@ -251,25 +259,32 @@ class Rps
             $tagValores->appendChild($tagValCSLL);
             if ($this->settings->issuer->codMun != 3147105) {
                 $tagValores->appendChild($tagISSRetido);
+                $tagValores->appendChild($tagValIss);
             }
-            $tagValores->appendChild($tagValIss);
             $tagValores->appendChild($tagOutrasRet);
             if ($this->settings->issuer->codMun != 3147105) {
                 $tagValores->appendChild($tagAliquota);
             }
-            $tagValores->appendChild($tagDescontoInc);
-            if ($this->settings->issuer->codMun != 3147105) {
-                $tagValores->appendChild($tagDescontoCond);
-            }
             if ($this->settings->issuer->codMun === 3147105) {
-                $this->servico->appendChild($tagCompetencia);
+                $tagValores->appendChild($tagValIss);
+                $tagValores->appendChild($tagAliquota);
             }
+
+            $tagValores->appendChild($tagDescontoInc);
+            $tagValores->appendChild($tagDescontoCond);
+
             $this->servico->appendChild($tagValores);
             if ($this->settings->issuer->codMun === 3147105) {
                 $this->servico->appendChild($tagISSRetido);
             }
             $this->servico->appendChild($tagItemLista);
-            $this->servico->appendChild($tagCodTribut);
+            if ($this->settings->issuer->codMun != 3147105) {
+                $this->servico->appendChild($tagCodTribut);
+            }
+            if ($this->settings->issuer->codMun === 3147105) {
+                $this->servico->appendChild($tagCodCnae);
+            }
+
             $this->servico->appendChild($tagDiscriminacao);
             $this->servico->appendChild($tagCodMunicipio);
             if ($this->settings->issuer->codMun === 3147105) {
@@ -404,6 +419,7 @@ class Rps
             $tagCep = $this->xml->createElement('Cep', $lot->rps->taker->address->zipCode);
             $tagCodPais = $this->xml->createElement('CodigoPais', $lot->rps->taker->address->contryCode);
 
+
             $tagContato = $this->xml->createElement('Contato');
             $tagTelefone = $this->xml->createElement('Telefone', $lot->rps->taker->phone);
             $tagEmail = $this->xml->createElement('Email', $lot->rps->taker->email);
@@ -433,10 +449,13 @@ class Rps
             $this->tomador->appendChild($tagRzSocial);
             $tagEndereco->appendChild($tagRua);
             $tagEndereco->appendChild($tagNumero);
+
             if ($this->settings->issuer->codMun != 3147105) {
                 $tagContato->appendChild($tagTelefone);
             }
-            $tagContato->appendChild($tagEmail);
+            if (isset($lot->rps->taker->email)) {
+                $tagContato->appendChild($tagEmail);
+            }
 
             if (!empty($lot->rps->taker->address->complement)) {
                 $tagEndereco->appendChild($tagComplemento);
@@ -448,8 +467,12 @@ class Rps
             if ($this->settings->issuer->codMun === 3147105) {
                 $tagEndereco->appendChild($tagCodPais);
             }
+            $tagEndereco->appendChild($tagCep);
+
             $this->tomador->appendChild($tagEndereco);
-            $this->tomador->appendChild($tagContato);
+            if (isset($lot->rps->taker->email)) {
+                $this->tomador->appendChild($tagContato);
+            }
 
 
         } catch (Exception $e) {
@@ -507,8 +530,9 @@ class Rps
     {
         try {
 
-            if ($this->settings->issuer->codMun == 3147105) {
+            if ($this->settings->issuer->codMun === 3147105) {
                 $this->infRps->appendChild($this->rps);
+                $this->infRps->appendChild($this->tagCompetencia);
                 $this->infRps->appendChild($this->servico);
                 $this->infRps->appendChild($this->prestador);
                 $this->infRps->appendChild($this->tomador);
@@ -524,7 +548,6 @@ class Rps
                 $this->rps->appendChild($this->infRps);
                 $this->xml->appendChild($this->rps);
             }
-
             return ($mode == 'xml') ? $this->xml->saveXML() : $this->xml->documentElement;
         } catch (Exception $e) {
 

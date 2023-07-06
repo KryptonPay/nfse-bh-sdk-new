@@ -49,7 +49,6 @@ class Soap extends SoapClient
                 ];
             }
             try {
-
                 parent::__construct($this->webservice->wsdl, $options);
 
             } catch (SoapFault $e) {
@@ -123,7 +122,7 @@ class Soap extends SoapClient
         $data .= '</soapenv:Envelope>';
 
         try {
-            dd($data);
+
             $response = parent::__doRequest($data, $location, $action, $version, $one_way);
         } catch (\SoapFault $a) {
             throw new \Exception("Não foi possivel se conectar ao sistema da prefeitura, tente novamente mais tarde.<br>E - {$a->getMessage()}");

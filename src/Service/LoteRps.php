@@ -2,11 +2,14 @@
 
 use Exception;
 use NFse\Helpers\Utils;
+use NFse\Helpers\XML;
 use NFse\Models\Settings;
+use NFse\Signature\Dom;
 use NFse\Signature\Subscriber;
 use NFse\Soap\EnvioLoteRps;
 use NFse\Soap\ErrorMsg;
 use NFse\Soap\Soap;
+use NFse\Service\Rps;
 
 class LoteRps
 {
@@ -50,11 +53,11 @@ class LoteRps
     /**
      * retorna o lote pronto para envio
      */
-    public function  sendLote($signTag): object
+    public function sendLote($signTag = null): object
     {
         $xmlLote = Utils::xmlFilter($this->loteRps->getLoteRps());
 
-        if($settings->issuer->codMun != 3147105) {
+        if ($settings->issuer->codMun != 3147105) {
             //tenta assinar o lote
             try {
                 $signedLote = $this->subscriber->assina($xmlLote, $signTag);
@@ -63,7 +66,6 @@ class LoteRps
             }
             $this->xmlLote = $signedLote;
         }
-
         //envia o request para a PBH
         try {
             $this->xSoap->setXML($signedLote);
@@ -72,40 +74,63 @@ class LoteRps
 
             throw new Exception($e->getMessage());
         }
-
         //carrega o xml de resposta para um object
         $xmlResponse = simplexml_load_string($wsResponse->outputXML);
 
         //identifica o retorno e faz o processamento nescessário
         if (is_object($xmlResponse) && isset($xmlResponse->ListaMensagemRetornoLote) || isset($xmlResponse->ListaMensagemRetorno)) {
             $wsError = new ErrorMsg($xmlResponse);
-            return (object) [
+            return (object)[
                 'success' => false,
-                'response' => (object) $wsError->getWsResponse(),
+                'response' => (object)$wsError->getWsResponse(),
             ];
         } else {
             $wsLote = new EnvioLoteRps($wsResponse);
-            return (object) [
+            return (object)[
                 'success' => true,
-                'response' => (object) $wsLote->getDadosLote(),
+                'response' => (object)$wsLote->getDadosLote(),
             ];
         }
     }
-    public function sendLoteQuasar( $fromFile = false): object
+
+    public function sendLoteQuasar($data): object
     {
+        //carrega xml e seta valores
+        $xml = XML::load('nfseEnvioQuasar')
+            ->set('InfDeclaracaoPrestacaoServico', $data)
+            ->filter()->save();
+        $format = '<?xml version="1.0" encoding="UTF-8"?>' . $xml;
 
-        $xmlLote = Utils::xmlFilter($this->loteRps->getLoteRps());
+        //remove sujeiras do xml
+        $order = ["\r\n", "\n", "\r", "\t"];
+        $result = str_replace($order, '', htmlspecialchars($format, ENT_QUOTES | ENT_XML1));
 
-        $xml = $xmlLote;
-        if ($fromFile == true && is_file($xmlLote)) {
-            $xml = file_get_contents($xmlLote);
+        //envia o request para soap
+        try {
+            $this->xSoap->setXML($result);
+            $wsResponse = $this->xSoap->__soapCall();
+        } catch (Exception $e) {
+
+            throw new Exception($e->getMessage());
         }
 
-        $order = ["\r\n", "\n", "\r", "\t"];
-        $xml = str_replace($order, '', $xml);
+        $xmlResponse = simplexml_load_string($wsResponse->outputXML);
 
-       dd($xml);
-
+      
+        //identifica o retorno e faz o processamento nescessário
+        if (is_object($xmlResponse) && isset($xmlResponse->ListaMensagemRetornoLote) || isset($xmlResponse->ListaMensagemRetorno)) {
+            $wsError = new ErrorMsg($xmlResponse);
+            return (object)[
+                'success' => false,
+                'response' => (object)$wsError->getWsResponse(),
+            ];
+        } else {
+            $wsLote = new EnvioLoteRps($wsResponse);
+            return (object)[
+                'success' => true,
+                'response' => (object)$wsLote->getDadosLote(),
+            ];
+        }
     }
 
     public function getXMLLote()

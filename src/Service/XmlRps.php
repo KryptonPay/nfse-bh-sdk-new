@@ -36,11 +36,12 @@ class XmlRps
         }
 
         //cria o documento XML
-        $this->xml = XML::load($methood)
+       $tet = $this->xml = XML::load($methood)
             ->set('NumeroLote', $this->text->with($numLote)->sanitize()->get())
             ->set('Cnpj', $this->num->with($this->settings->issuer->cnpj)->sanitize()->get())
             ->set('InscricaoMunicipal', $this->num->with($this->settings->issuer->imun)->sanitize()->get())
             ->filter()->save();
+      
 
     }
 
@@ -65,7 +66,6 @@ class XmlRps
             ->set('QuantidadeRps', $this->countRps)
             ->set('Rps', $this->signedRps)
             ->filter()->save();
-
         return $xml;
     }
 }
