@@ -113,10 +113,8 @@ class LoteRps
 
             throw new Exception($e->getMessage());
         }
+        $xmlResponse = simplexml_load_string($wsResponse->return);
 
-        $xmlResponse = simplexml_load_string($wsResponse->outputXML);
-
-      
         //identifica o retorno e faz o processamento nescessário
         if (is_object($xmlResponse) && isset($xmlResponse->ListaMensagemRetornoLote) || isset($xmlResponse->ListaMensagemRetorno)) {
             $wsError = new ErrorMsg($xmlResponse);
@@ -132,6 +130,7 @@ class LoteRps
             ];
         }
     }
+
 
     public function getXMLLote()
     {
