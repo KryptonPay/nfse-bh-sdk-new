@@ -50,7 +50,7 @@ class EnvioLoteRps
                 'nfse' => [
                     'numero' => $this->wsResponse->ListaNfse->CompNfse->Nfse->InfNfse->Numero->__toString(),
                     'numeroRps' => $this->wsResponse->ListaNfse->CompNfse->Nfse->InfNfse->DeclaracaoPrestacaoServico->InfDeclaracaoPrestacaoServico->Rps->attributes()['Id'][0]->__toString(),
-                    'codigoVerificacao' => $this->wsResponse->ListaNfse->CompNfse->Nfse->InfNfse->CodigoVerificacao->__toString(),
+                    'codigoVerificacao' => $this->wsResponse->ListaNfse->CompNfse->Nfse->InfNfse->CodigoControle->__toString(),
                     'dataEmissao' =>$this->wsResponse->ListaNfse->CompNfse->Nfse->InfNfse->DataEmissao->__toString(),
                     'competencia' => $timestamp,
                     'prestadorCnpj' => $this->wsResponse->ListaNfse->CompNfse->Nfse->InfNfse->PrestadorServico->IdentificacaoPrestador->CpfCnpj->Cnpj->__toString(),

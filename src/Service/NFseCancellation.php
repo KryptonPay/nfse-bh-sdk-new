@@ -30,8 +30,9 @@ class NFseCancellation extends ConsultBase
         $this->numNFs = $parameters->numerNFse;
         $this->settings = $settings;
 
-        $parameters->file = 'cancelamentoNFs';
-        $this->xSoap = new Soap($settings, 'CancelarNfseRequest');
+        $parameters->file = $settings->issuer->codMun === 3147105 ? 'cancelamentoNFsQuasar' : 'cancelamentoNFs';
+        $method = $settings->issuer->codMun === 3147105 ? 'CancelarNfse' : 'CancelarNfseRequest';
+        $this->xSoap = new Soap($settings, $method);
         $this->callConsultation($settings, $parameters);
     }
 
@@ -42,44 +43,56 @@ class NFseCancellation extends ConsultBase
     {
         //recupera e assina o xml de cancelamento
         $xmlCancel = $this->getXML();
+
         try {
             $this->subscriber->loadPFX();
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
         }
+        $sxlCancel = $xmlCancel;
+        if ($this->settings->issuer->codMun != 3147105) {
+            $sxlCancel = $this->subscriber->assina($xmlCancel, 'InfPedidoCancelamento');
+        }
+        if ($this->settings->issuer->codMun === 3147105) {
+            //remove sujeiras do xml
+            $order = ["\r\n", "\n", "\r", "\t"];
+            $xml = str_replace($order, '', htmlspecialchars($sxlCancel, ENT_QUOTES | ENT_XML1));
 
-        $sxlCancel = $this->subscriber->assina($xmlCancel, 'InfPedidoCancelamento');
+        }
+        if ($this->settings->issuer->codMun != 3147105) {
+            //faz um pequeno hack trocando a posição da tag de assinatura devido a um erro no parser do webservice
+            $xml = new \DOMDocument('1.0', 'utf-8');
+            $xml->preserveWhiteSpace = false;
+            $xml->loadXML($sxlCancel);
 
-        //faz um pequeno hack trocando a posição da tag de assinatura devido a um erro no parser do webservice
-        $xml = new \DOMDocument('1.0', 'utf-8');
-        $xml->preserveWhiteSpace = false;
-        $xml->loadXML($sxlCancel);
-        $signature = $xml->getElementsByTagName('Signature')[0];
-        $xml->documentElement->removeChild($xml->getElementsByTagName('Signature')[0]);
-        $xml->getElementsByTagName('Pedido')[0]->appendChild($signature);
+            $signature = $xml->getElementsByTagName('Signature')[0];
+            $xml->documentElement->removeChild($xml->getElementsByTagName('Signature')[0]);
+            $xml->getElementsByTagName('Pedido')[0]->appendChild($signature);
+            $xml->saveXML();
+        }
 
         //envia a chamada para o SOAP
         try {
-            $this->xSoap->setXML($xml->saveXML());
+            $this->xSoap->setXML($xml);
             $wsResponse = $this->xSoap->__soapCall();
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
         }
 
         //carrega o xml de resposta para um object
-        $xmlResponse = simplexml_load_string($wsResponse->outputXML);
 
+        $xmlResponse = isset($wsResponse->outputXML) ? simplexml_load_string($wsResponse->outputXML) : simplexml_load_string($wsResponse->return);
         //identifica o retorno e faz o processamento nescessário
         if (is_object($xmlResponse) && isset($xmlResponse->ListaMensagemRetorno)) {
             $wsError = new ErrorMsg($xmlResponse);
             $messages = $wsError->getMessages('ListaMensagemRetorno');
 
-            return (object) $this->errors = ($messages) ? $messages : $wsError->getError();
+            return (object)$this->errors = ($messages) ? $messages : $wsError->getError();
         } else {
             $wsLote = new CancelamentoNFs($wsResponse);
             $dataCancel = $wsLote->getDataCancelamento();
 
-            return (object) $dataCancel;
+            return (object)$dataCancel;
         }
     }
 }

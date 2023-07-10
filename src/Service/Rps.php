@@ -426,11 +426,11 @@ class Rps
 
 
             //faz o append das tags
-            if ($this->settings->issuer->codMun === 3147105 && $lot->rps->taker->type == Self::CNPJ) {
+            if ($this->settings->issuer->codMun === 3147105 && strlen(trim($lot->rps->taker->document)) == 11 ) {
                 $tagIdentifTomador->appendChild($tagCpfCnpj);
                 $tagCpf = $this->xml->createElement('Cpf', trim($lot->rps->taker->document));
                 $tagCpfCnpj->appendChild($tagCpf);
-            } else if ($this->settings->issuer->codMun === 3147105 && $lot->rps->taker->type == Self::CPF) {
+            }elseif ($this->settings->issuer->codMun === 3147105 ) {
                 $tagIdentifTomador->appendChild($tagCpfCnpj);
                 $tagCnpj = $this->xml->createElement('Cnpj', trim($lot->rps->taker->document));
                 $tagCpfCnpj->appendChild($tagCnpj);

@@ -26,8 +26,8 @@ class ConsultBase
      */
     protected function callConsultation(Settings $settings, object $parameters): void
     {
+       
         switch ($parameters->file) {
-
             case 'consultaSituacaoLoteRps':
             case 'consultaLoteRps':
                 $this->xml = XML::load($parameters->file)
@@ -47,6 +47,16 @@ class ConsultBase
             case 'cancelamentoNFs':
                 $this->xml = XML::load($parameters->file)
                     ->set('Id', $parameters->id)
+                    ->set('numeroNFSe', $this->num->with($parameters->numerNFse)->sanitize()->get())
+                    ->set('cnpjPrestador', $settings->issuer->cnpj)
+                    ->set('imPrestador', $settings->issuer->imun)
+                    ->set('codigoMunicipioPrestaor', $settings->issuer->codMun)
+                    ->set('codigoCancelamento', $parameters->cancellationCode)
+                    ->filter()
+                    ->save();
+                break;
+            case 'cancelamentoNFsQuasar':
+                $this->xml = XML::load($parameters->file)
                     ->set('numeroNFSe', $this->num->with($parameters->numerNFse)->sanitize()->get())
                     ->set('cnpjPrestador', $settings->issuer->cnpj)
                     ->set('imPrestador', $settings->issuer->imun)

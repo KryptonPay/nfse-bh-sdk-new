@@ -40,7 +40,6 @@ class Soap extends SoapClient
                     'cache_wsdl' => $this->webservice->cacheWsdl,
                     'stream_context' => stream_context_create([
                         "ssl" => [
-
                             'local_cert' => $this->settings->certificate->folder . $this->settings->certificate->mixedKey,
                             "verify_peer" => $this->webservice->sslVerifyPeer,
                             "verify_peer_name" => $this->webservice->sslVerifyPeerName,
@@ -49,6 +48,7 @@ class Soap extends SoapClient
                 ];
             }
             try {
+
                 parent::__construct($this->webservice->wsdl, $options);
 
             } catch (SoapFault $e) {
@@ -122,7 +122,6 @@ class Soap extends SoapClient
         $data .= '</soapenv:Envelope>';
 
         try {
-
             $response = parent::__doRequest($data, $location, $action, $version, $one_way);
         } catch (\SoapFault $a) {
             throw new \Exception("Não foi possivel se conectar ao sistema da prefeitura, tente novamente mais tarde.<br>E - {$a->getMessage()}");

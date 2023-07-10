@@ -110,7 +110,6 @@ class LoteRps
             $this->xSoap->setXML($result);
             $wsResponse = $this->xSoap->__soapCall();
         } catch (Exception $e) {
-
             throw new Exception($e->getMessage());
         }
         $xmlResponse = simplexml_load_string($wsResponse->return);

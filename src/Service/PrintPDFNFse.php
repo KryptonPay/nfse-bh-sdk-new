@@ -88,7 +88,7 @@ class PrintPDFNFse
                     text-align: center;
                 }
                 .logo {
-                    max-width: 230px;
+                    max-width:530px;
                     padding: 10px;
                 }
                 .teste {

@@ -40,6 +40,7 @@ class WebService
     {
         try {
             $this->env = $settings->environment;
+         
             if ($this->env == 'homologacao') {
                 $this->homologacao($settings->issuer->codMun);
             } else {
