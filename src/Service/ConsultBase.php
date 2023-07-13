@@ -57,6 +57,7 @@ class ConsultBase
                 break;
             case 'cancelamentoNFsQuasar':
                 $this->xml = XML::load($parameters->file)
+                    ->set('Id', $parameters->id)
                     ->set('numeroNFSe', $this->num->with($parameters->numerNFse)->sanitize()->get())
                     ->set('cnpjPrestador', $settings->issuer->cnpj)
                     ->set('imPrestador', $settings->issuer->imun)
